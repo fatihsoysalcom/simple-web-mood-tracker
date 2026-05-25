@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QuietPulse: Simple Mood Tracker</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 20px auto; padding: 0 15px; background-color: #f4f7f6; color: #333; }
+        h1, h2 { color: #2c3e50; }
+        .container { background-color: #fff; padding: 25px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); margin-bottom: 20px; }
+        form label { display: block; margin-bottom: 8px; font-weight: bold; }
+        form select, form textarea { width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; }
+        form button { background-color: #4CAF50; color: white; padding: 12px 20px; border: none; border-radius: 4px; cursor: pointer; font-size: 16px; }
+        form button:hover { background-color: #45a049; }
+        .mood-entry { background-color: #e9f5e9; border-left: 5px solid #4CAF50; padding: 10px 15px; margin-bottom: 10px; border-radius: 4px; }
+        .mood-entry p { margin: 5px 0; }
+        .mood-entry strong { color: #2c3e50; }
+        .summary-item { margin-bottom: 5px; }
+        .summary-item span { display: inline-block; width: 100px; }
+    </style>
+</head>
+<body>
+    <h1>QuietPulse: Simple Mood Tracker</h1>
+
+    <div class="container">
+        <h2>Record Your Mood</h2>
+        <form id="moodForm">
+            <label for="moodSelect">How are you feeling today?</label>
+            <select id="moodSelect" required>
+                <option value="">-- Select Mood --</option>
+                <option value="great">😊 Great</option>
+                <option value="good">🙂 Good</option>
+                <option value="neutral">😐 Neutral</option>
+                <option value="bad">🙁 Bad</option>
+                <option value="terrible">😞 Terrible</option>
+            </select>
+
+            <label for="moodNote">Notes (optional):</label>
+            <textarea id="moodNote" rows="3" placeholder="What influenced your mood today?"></textarea>
+
+            <button type="submit">Add Mood</button>
+        </form>
+    </div>
+
+    <div class="container">
+        <h2>Mood History</h2>
+        <div id="moodHistory">
+            <!-- Mood entries will be loaded here -->
+            <p>No moods recorded yet.</p>
+        </div>
+    </div>
+
+    <div class="container">
+        <h2>Mood Summary</h2>
+        <div id="moodSummary">
+            <!-- Mood summary will be loaded here -->
+            <p>No moods recorded yet for summary.</p>
+        </div>
+    </div>
+
+    <script>
+        // Key for storing moods in localStorage
+        const STORAGE_KEY = 'quietPulseMoods';
+        let moods = []; // Array to hold all mood entries
+
+        // --- Functions to manage mood data --- 
+
+        // Loads moods from localStorage
+        function loadMoods() {
+            const storedMoods = localStorage.getItem(STORAGE_KEY);
+            if (storedMoods) {
+                moods = JSON.parse(storedMoods);
+            }
+            renderMoods();
+            renderSummary();
+        }
+
+        // Saves current moods array to localStorage
+        function saveMoods() {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(moods));
+        }
+
+        // Adds a new mood entry
+        function addMood(mood, note) {
+            const date = new Date().toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' });
+            // This is the core concept: recording an emotional state with context (date, note).
+            moods.unshift({ date, mood, note }); // Add to the beginning for newest first
+            saveMoods();
+            renderMoods();
+            renderSummary();
+        }
+
+        // --- Functions to render UI ---
+
+        // Renders the mood history list
+        function renderMoods() {
+            const moodHistoryDiv = document.getElementById('moodHistory');
+            moodHistoryDiv.innerHTML = ''; // Clear previous entries
+
+            if (moods.length === 0) {
+                moodHistoryDiv.innerHTML = '<p>No moods recorded yet.</p>';
+                return;
+            }
+
+            moods.forEach(entry => {
+                const moodEntryDiv = document.createElement('div');
+                moodEntryDiv.className = 'mood-entry';
+                // Displaying recorded mood and note, illustrating the tracking aspect.
+                moodEntryDiv.innerHTML = `
+                    <p><strong>Date:</strong> ${entry.date}</p>
+                    <p><strong>Mood:</strong> ${getMoodEmoji(entry.mood)} ${entry.mood.charAt(0).toUpperCase() + entry.mood.slice(1)}</p>
+                    ${entry.note ? `<p><strong>Notes:</strong> ${entry.note}</p>` : ''}
+                `;
+                moodHistoryDiv.appendChild(moodEntryDiv);
+            });
+        }
+
+        // Renders a simple summary of mood distribution
+        function renderSummary() {
+            const moodSummaryDiv = document.getElementById('moodSummary');
+            moodSummaryDiv.innerHTML = ''; // Clear previous summary
+
+            if (moods.length === 0) {
+                moodSummaryDiv.innerHTML = '<p>No moods recorded yet for summary.</p>';
+                return;
+            }
+
+            const moodCounts = {};
+            moods.forEach(entry => {
+                moodCounts[entry.mood] = (moodCounts[entry.mood] || 0) + 1;
+            });
+
+            // This illustrates understanding emotional patterns over time.
+            const sortedMoods = Object.keys(moodCounts).sort((a, b) => moodCounts[b] - moodCounts[a]);
+
+            sortedMoods.forEach(mood => {
+                const count = moodCounts[mood];
+                const percentage = ((count / moods.length) * 100).toFixed(1);
+                const summaryItem = document.createElement('div');
+                summaryItem.className = 'summary-item';
+                summaryItem.innerHTML = `
+                    <span>${getMoodEmoji(mood)} ${mood.charAt(0).toUpperCase() + mood.slice(1)}:</span>
+                    ${count} (${percentage}%) 
+                `;
+                moodSummaryDiv.appendChild(summaryItem);
+            });
+        }
+
+        // Helper to get emoji for mood
+        function getMoodEmoji(mood) {
+            switch (mood) {
+                case 'great': return '😊';
+                case 'good': return '🙂';
+                case 'neutral': return '😐';
+                case 'bad': return '🙁';
+                case 'terrible': return '😞';
+                default: return '';
+            }
+        }
+
+        // --- Event Listeners ---
+
+        // Handle form submission
+        document.getElementById('moodForm').addEventListener('submit', function(event) {
+            event.preventDefault(); // Prevent default form submission
+
+            const moodSelect = document.getElementById('moodSelect');
+            const moodNote = document.getElementById('moodNote');
+
+            const selectedMood = moodSelect.value;
+            const noteText = moodNote.value.trim();
+
+            if (selectedMood) {
+                addMood(selectedMood, noteText);
+                // Clear form after submission
+                moodSelect.value = '';
+                moodNote.value = '';
+            } else {
+                alert('Please select your mood!');
+            }
+        });
+
+        // Load moods when the page loads
+        document.addEventListener('DOMContentLoaded', loadMoods);
+    </script>
+</body>
+</html>
